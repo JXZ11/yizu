@@ -1,4 +1,41 @@
 # yizu
+ zzm
+package com.library.controller;
+
+import com.library.bean.Book;
+import com.library.bean.Lend;
+import com.library.bean.ReaderCard;
+import com.library.service.BookService;
+import com.library.service.LendService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import javax.servlet.http.HttpServletRequest;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+
+@Controller
+public class BookController {
+    @Autowired
+    private BookService bookService;
+    @Autowired
+    private LendService lendService;
+
+    private Date getDate(String pubstr) {
+        try {
+            SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+            return df.parse(pubstr);
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return new Date();
+        }
+
  zhr
 void sub4_1()//专题4:Clock页面置换算法,默认低物理地址优先 
 {
@@ -521,91 +558,125 @@ void build(int u, int l, int r){
         tr[u].l = tr[u].r = r;
         tr[u].lmax = tr[u].rmax = tr[u].smax = 1;
         tr[u].lazy = 0;
+ main
     }
-    else{
-        tr[u].l = l, tr[u].r = r;
-        tr[u].lmax = tr[u].rmax = tr[u].smax = r - l + 1;
-        tr[u].lazy = 0;
-        int mid = l + r >> 1;
-        build(u << 1, l, mid);
-        build(u << 1 | 1, mid + 1, r);
-    }
-}
 
-void pushup(int u){
-    node &uu = tr[u], &ls = tr[u << 1], &rs = tr[u << 1 | 1];
-    if(ls.smax == ls.r - ls.l + 1) uu.lmax = ls.smax + rs.lmax;
-    else uu.lmax = ls.lmax;
-    if(rs.smax == rs.r - rs.l + 1) uu.rmax = rs.smax + ls.rmax;
-    else uu.rmax = rs.rmax;
-    uu.smax = max(ls.smax, max(rs.smax, ls.rmax + rs.lmax)); 
-}
-
-void pushdown(int u){
-    node &uu = tr[u], &ls = tr[u << 1], &rs = tr[u << 1 | 1];
-    if(uu.lazy){
-        if(uu.lazy == 1){
-            ls.lazy = rs.lazy = uu.lazy;
-            ls.lmax = ls.rmax = ls.smax = 0;
-            rs.lmax = rs.rmax = rs.smax = 0;
+    @RequestMapping("/querybook.html")
+    public ModelAndView queryBookDo(String searchWord) {
+        if (bookService.matchBook(searchWord)) {
+            ArrayList<Book> books = bookService.queryBook(searchWord);
+            ModelAndView modelAndView = new ModelAndView("admin_books");
+            modelAndView.addObject("books", books);
+            return modelAndView;
+        } else {
+            return new ModelAndView("admin_books", "error", "没有匹配的图书");
         }
-        else{
-            ls.lazy = rs.lazy = uu.lazy;
-            ls.lmax = ls.rmax = ls.smax = ls.r - ls.l + 1;
-            rs.lmax = rs.rmax = rs.smax = rs.r - rs.l + 1;
-        }   
-        uu.lazy = 0;
     }
-}
 
-void modify(int u, int l, int r, int mark){
-    if(l <= tr[u].l && r >= tr[u].r){
-        if(mark == 1){
-            tr[u].lmax = tr[u].rmax = tr[u].smax = 0;
+    @RequestMapping("/reader_querybook_do.html")
+    public ModelAndView readerQueryBookDo(String searchWord) {
+        if (bookService.matchBook(searchWord)) {
+            ArrayList<Book> books = bookService.queryBook(searchWord);
+            ModelAndView modelAndView = new ModelAndView("reader_books");
+            modelAndView.addObject("books", books);
+            return modelAndView;
+        } else {
+            return new ModelAndView("reader_books", "error", "没有匹配的图书");
         }
-        else tr[u].lmax = tr[u].rmax = tr[u].smax = tr[u].r - tr[u].l + 1;
-        tr[u].lazy = mark;
-        return;
     }
-    if(tr[u].lazy) pushdown(u);
-    int mid = tr[u].l + tr[u].r >> 1;
-    if(l <= mid) modify(u << 1, l, r, mark);
-    if(r > mid) modify(u << 1 | 1, l, r, mark);
-    pushup(u);
-}
 
-int query(int u, int len){
-    if(tr[u].l == tr[u].r) return tr[u].l;
-    if(tr[u].lazy) pushdown(u);
-    int mid = tr[u].l + tr[u].r >> 1;
-    if(tr[u << 1].smax >= len) return query(u << 1, len);
-    else if(tr[u << 1].rmax + tr[u << 1 | 1].lmax >= len) return tr[u << 1].r - tr[u << 1].rmax + 1;
-    else return query(u << 1 | 1, len);
-}
+    @RequestMapping("/admin_books.html")
+    public ModelAndView adminBooks() {
+        ArrayList<Book> books = bookService.getAllBooks();
+        ModelAndView modelAndView = new ModelAndView("admin_books");
+        modelAndView.addObject("books", books);
+        return modelAndView;
+    }
 
-void solve(){
-    cin >> n >> m;
-    build(1,1, n);
-    while(m --){
-        int stt;
-        cin >> stt;
-        if(stt == 1){
-            int x;
-            cin >> x;
-            if(tr[1].smax >= x){
-                int l = query(1, x);
-                cout << l << endl;
-                modify(1, l, l + x - 1, 1);
+    @RequestMapping("/book_add.html")
+    public ModelAndView addBook() {
+        return new ModelAndView("admin_book_add");
+    }
+
+    @RequestMapping("/book_add_do.html")
+    public String addBookDo(Book book, RedirectAttributes redirectAttributes) {
+        //book.setPubdate(getDate(pubstr));
+        if (bookService.addBook(book)) {
+            redirectAttributes.addFlashAttribute("succ", "图书添加成功！");
+        } else {
+            redirectAttributes.addFlashAttribute("succ", "图书添加失败！");
+        }
+        return "redirect:/admin_books.html";
+    }
+
+    @RequestMapping("/updatebook.html")
+    public ModelAndView bookEdit(HttpServletRequest request) {
+        long bookId = Long.parseLong(request.getParameter("bookId"));
+        Book book = bookService.getBook(bookId);
+        ModelAndView modelAndView = new ModelAndView("admin_book_edit");
+        modelAndView.addObject("detail", book);
+        return modelAndView;
+    }
+
+    @RequestMapping("/book_edit_do.html")
+    public String bookEditDo( Book book, RedirectAttributes redirectAttributes) {
+        //book.setPubdate(getDate(pubstr));
+        if (bookService.editBook(book)) {
+            redirectAttributes.addFlashAttribute("succ", "图书修改成功！");
+        } else {
+            redirectAttributes.addFlashAttribute("error", "图书修改失败！");
+        }
+        return "redirect:/admin_books.html";
+    }
+
+    @RequestMapping("/admin_book_detail.html")
+    public ModelAndView adminBookDetail(HttpServletRequest request) {
+        long bookId = Long.parseLong(request.getParameter("bookId"));
+        Book book = bookService.getBook(bookId);
+        ModelAndView modelAndView = new ModelAndView("admin_book_detail");
+        modelAndView.addObject("detail", book);
+        return modelAndView;
+    }
+
+    @RequestMapping("/reader_book_detail.html")
+    public ModelAndView readerBookDetail(HttpServletRequest request) {
+        long bookId = Long.parseLong(request.getParameter("bookId"));
+        Book book = bookService.getBook(bookId);
+        ModelAndView modelAndView = new ModelAndView("reader_book_detail");
+        modelAndView.addObject("detail", book);
+        return modelAndView;
+    }
+
+    @RequestMapping("/admin_header.html")
+    public ModelAndView admin_header() {
+        return new ModelAndView("admin_header");
+    }
+
+    @RequestMapping("/reader_header.html")
+    public ModelAndView reader_header() {
+        return new ModelAndView("reader_header");
+    }
+
+    @RequestMapping("/reader_books.html")
+    public ModelAndView readerBooks(HttpServletRequest request) {
+        ArrayList<Book> books = bookService.getAllBooks();
+        ReaderCard readerCard = (ReaderCard) request.getSession().getAttribute("readercard");
+        ArrayList<Lend> myAllLendList = lendService.myLendList(readerCard.getReaderId());
+        ArrayList<Long> myLendList = new ArrayList<>();
+        for (Lend lend : myAllLendList) {
+            // 是否已归还 若为null 说明没有归还 将bookid保存在集合中
+            if (lend.getBackDate() == null) {
+                myLendList.add(lend.getBookId());
             }
-            else cout << 0 << endl;
         }
-        else{
-            int x, y;
-            cin >> x >> y;
-            modify(1, x, x + y - 1, 2);
-        }
+        ModelAndView modelAndView = new ModelAndView("reader_books");
+        modelAndView.addObject("books", books);
+        modelAndView.addObject("myLendList", myLendList);
+        return modelAndView;
     }
 }
+
+ zzm
 
 signed main(){
     ios::sync_with_stdio(false);
@@ -615,5 +686,6 @@ signed main(){
     return 0;
  main
 }
+ main
  main
  main
